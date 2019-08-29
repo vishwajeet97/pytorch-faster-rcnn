@@ -8,6 +8,8 @@ def process_and_dump(gqa_vg, args, split='train'):
 
     split_gqa_vg = {img_id:gqa_vg[img_id] for img_id in idx}
 
+    object_labels = set()
+
     for img_id, record in split_gqa_vg.items():
         record.pop('location', None)
         record.pop('weather', None)
@@ -16,7 +18,14 @@ def process_and_dump(gqa_vg, args, split='train'):
             obj.pop('attributes', None)
             obj.pop('relations', None)
             objects.append(obj)
+            object_labels.add(obj['name'])
         record['objects'] = objects
+
+    object_labels = sorted(list(object_labels))
+
+    if split == 'train':
+        with open(os.path.join(args.destination, 'objects.json'), 'w+') as f:
+            json.dump(object_labels, f)
 
     with open(os.path.join(args.destination, '%s_annotations.json'), 'w+') as f:
         json.dump(split_gqa_vg, f)

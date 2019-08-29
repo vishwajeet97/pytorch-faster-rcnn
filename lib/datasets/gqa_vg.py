@@ -89,6 +89,16 @@ class gqa_vg(imdb):
     """
         return os.path.join(cfg.DATA_DIR, 'VG')
 
+    def _get_object_classes(self):
+        """
+        Reads the object classes from a json file
+        """
+        with open(os.path.join(self._data_path, 'objects.json')) as f:
+            classes = json.load(f)
+
+        classes.insert(0, '__background__')
+        return classes
+
     def gt_roidb(self):
         """
     Return the database of ground-truth regions of interest.
