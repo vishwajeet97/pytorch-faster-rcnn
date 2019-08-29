@@ -12,6 +12,7 @@ from __future__ import print_function
 __sets = {}
 from datasets.pascal_voc import pascal_voc
 from datasets.coco import coco
+from datasets.gqa_vg import gqa_vg
 
 import numpy as np
 
@@ -37,6 +38,16 @@ for year in ['2015']:
     for split in ['test', 'test-dev']:
         name = 'coco_{}_{}'.format(year, split)
         __sets[name] = (lambda split=split, year=year: coco(split, year))
+
+# Set gqa_vg
+for split in ['minitrain', 'minival', 'minitest']:
+    name = 'gqa_vg_{}'.format(split)
+    __sets[name] = (lambda split=split: gqa_vg(split))
+
+# Set gqa_vg
+for split in ['train', 'val', 'test']:
+    name = 'gqa_vg_{}'.format(split)
+    __sets[name] = (lambda split=split: gqa_vg(split))
 
 
 def get_imdb(name):
