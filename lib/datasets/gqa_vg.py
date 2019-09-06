@@ -166,7 +166,9 @@ class gqa_vg(imdb):
             image_objs = json.load(f)
 
         annotations = []
-        for image_idx in self._image_index:
+        widths = self._get_widths()
+        heights = self._get_heights()
+        for i, image_idx in enumerate(self._image_index):
             objs = image_objs[image_idx]['objects']
             num_objs = len(objs)
 
@@ -176,8 +178,8 @@ class gqa_vg(imdb):
             # "Seg" area for pascal is just the box area
             seg_areas = np.zeros((num_objs), dtype=np.float32)
 
-            height_image = image_objs[image_idx]["height"]
-            width_image = image_objs[image_idx]["width"]
+            height_image = heights[i]
+            width_image = widths[i]
             # Load object bounding boxes into a data frame.
             for ix, obj in enumerate(objs):
                 x, y, w, h = obj['x'], obj['y'], obj['w'], obj['h']
@@ -185,8 +187,8 @@ class gqa_vg(imdb):
                 # Make pixel indexes 0-based
                 x1 = x
                 y1 = y
-                x2 = int(np.clip(x+w, 0, width_image-2))
-                y2 = int(np.clip(y+h, 0, height_image-2))
+                x2 = int(np.clip(x+w, 0, width_image-1))
+                y2 = int(np.clip(y+h, 0, height_image-1))
                 cls = self._class_to_ind[obj['name']]
                 boxes[ix, :] = [x1, y1, x2, y2]
                 gt_classes[ix] = cls

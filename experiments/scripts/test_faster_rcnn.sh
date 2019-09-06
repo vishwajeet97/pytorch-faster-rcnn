@@ -43,7 +43,15 @@ case ${DATASET} in
     ITERS=490000
     ANCHORS="[4,8,16,32]"
     RATIOS="[0.5,1,2]"
-    ;;  
+    ;; 
+  gqa_vg_mini)
+    TRAIN_IMDB="gqa_vg_minitrain"
+    TEST_IMDB="gqa_vg_minitest"
+    STEPSIZE="[350000]"
+    ITERS=10000
+    ANCHORS="[4,8,16,32]"
+    RATIOS="[0.5,1,2]"
+    ;; 
   *)
     echo "No dataset given"
     exit

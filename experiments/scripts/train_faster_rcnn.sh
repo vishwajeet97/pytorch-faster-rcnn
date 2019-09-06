@@ -1,10 +1,10 @@
 #!/bin/bash
 
-set -x
+# set -x
 # set -e
 
 export PYTHONUNBUFFERED="True"
-# rm data/VG/cache/minitrain_gt_roidb.pkl
+rm data/VG/cache/train_gt_roidb.pkl
 GPU_ID=$1
 DATASET=$2
 NET=$3
@@ -46,7 +46,15 @@ case ${DATASET} in
     ITERS=490000
     ANCHORS="[4,8,16,32]"
     RATIOS="[0.5,1,2]"
-    ;;  
+    ;;
+  gqa_vg_mini)
+    TRAIN_IMDB="gqa_vg_minitrain"
+    TEST_IMDB="gqa_vg_minival"
+    STEPSIZE="[350000]"
+    ITERS=10000
+    ANCHORS="[4,8,16,32]"
+    RATIOS="[0.5,1,2]"
+    ;;    
   *)
     echo "No dataset given"
     exit
@@ -57,13 +65,13 @@ LOG="experiments/logs/${NET}_${TRAIN_IMDB}_${EXTRA_ARGS_SLUG}_${NET}.txt.`date +
 exec &> >(tee -a "$LOG")
 echo Logging output to "$LOG"
 
-set +x
+# set +x
 if [[ ! -z  ${EXTRA_ARGS_SLUG}  ]]; then
   NET_FINAL=output/${NET}/${TRAIN_IMDB}/${EXTRA_ARGS_SLUG}/${NET}_faster_rcnn_iter_${ITERS}.pth
 else
   NET_FINAL=output/${NET}/${TRAIN_IMDB}/default/${NET}_faster_rcnn_iter_${ITERS}.pth
 fi
-set -x
+# set -x
 
 if [ ! -f ${NET_FINAL}.index ]; then
   if [[ ! -z  ${EXTRA_ARGS_SLUG}  ]]; then
@@ -90,4 +98,4 @@ if [ ! -f ${NET_FINAL}.index ]; then
   fi
 fi
 
-./experiments/scripts/test_faster_rcnn.sh $@
+# ./experiments/scripts/test_faster_rcnn.sh $@

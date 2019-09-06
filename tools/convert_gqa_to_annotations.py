@@ -3,14 +3,14 @@ import json
 import argparse
 
 def process_and_dump(gqa_vg, args, split='train'):
-    with open(os.path.join(args.splits, '%s_clean.json'%split)) as f:
-        idx = json.load(f)
-    split_gqa_vg = {img_id:gqa_vg[str(img_id)] for img_id in idx if str(img_id) in gqa_vg}
+    # with open(os.path.join(args.splits, '%s_clean.json'%split)) as f:
+    #     idx = json.load(f)
+
+    idx = sorted(list(gqa_vg.keys()))
+    # split_gqa_vg = {img_id:gqa_vg[str(img_id)] for img_id in idx if str(img_id) in gqa_vg}
     print ('Out of ', len(idx), 'images, found ', len(split_gqa_vg))
 
-    object_labels = set()
-
-    for img_id, record in split_gqa_vg.items():
+    for img_id, record in gqa_vg.items():
         record.pop('location', None)
         record.pop('weather', None)
         objects = []
@@ -18,20 +18,16 @@ def process_and_dump(gqa_vg, args, split='train'):
             obj.pop('attributes', None)
             obj.pop('relations', None)
             objects.append(obj)
-            object_labels.add(obj['name'])
         record['objects'] = objects
 
-    object_labels = sorted(list(object_labels))
-
-    if split == 'train':
-        with open(os.path.join(args.destination, 'objects.json'), 'w+') as f:
-            json.dump(object_labels, f)
-
     with open(os.path.join(args.destination, '%s_annotations.json'%split), 'w+') as f:
-        json.dump(split_gqa_vg, f)
+        json.dump(gqa_vg, f)
+
+    with open(os.path.join(args.destination, '%s_clean.json'%split), 'w+') as f:
+            json.dump(idx, f)    
 
     if args.mini_version:
-        mini_gqa_vg = {key: value for index, (key, value) in enumerate(split_gqa_vg.items()) if index < 1000}
+        mini_gqa_vg = {key: value for index, (key, value) in enumerate(gqa_vg.items()) if index < 1000}
         with open(os.path.join(args.destination, 'mini%s_annotations.json'%split), 'w+') as f:
             json.dump(mini_gqa_vg, f)
         keys = list(mini_gqa_vg.keys())
@@ -41,30 +37,59 @@ def process_and_dump(gqa_vg, args, split='train'):
     return split_gqa_vg
 
 def main(args):
-    assert os.path.isfile(args.gqa_vg)
+    assert os.path.isfile(args.gqa_vg_train)
+    assert os.path.isfile(args.gqa_vg_val)
+
     assert os.path.isdir(args.splits)
     assert os.path.isdir(args.destination)
-    assert os.path.isfile(os.path.join(args.splits, 'train_clean.json'))
-    assert os.path.isfile(os.path.join(args.splits, 'val_clean.json'))
-    assert os.path.isfile(os.path.join(args.splits, 'test_clean.json'))
+    # assert os.path.isfile(os.path.join(args.splits, 'train_clean.json'))
+    # assert os.path.isfile(os.path.join(args.splits, 'val_clean.json'))
+    # assert os.path.isfile(os.path.join(args.splits, 'test_clean.json'))
 
-    with open(args.gqa_vg) as f:
-        gqa_vg = json.load(f)
+    with open(args.gqa_vg_train) as f:
+        gqa_vg_train = json.load(f)
 
-    train_gqa_vg = process_and_dump(gqa_vg, args, 'train')
-    val_gqa_vg = process_and_dump(gqa_vg, args, 'val')
-    test_gqa_vg = process_and_dump(gqa_vg, args, 'test')
+    with open(args.gqa_vg_val) as f:
+        gqa_vg_val = json.load(f)
+
+    object_labels = set()
+    for idx, record in gqa_vg_train.items():
+        for obj_key, obj in record['objects']:
+            object_labels.add(obj['name'])
+
+    for idx, record in gqa_vg_val.items():
+        for obj_key, obj in record['objects']:
+            object_labels.add(obj['name'])
+
+    object_labels = sorted(list(object_labels))
+    with open(os.path.join(args.destination, 'objects.json'), 'w+') as f:
+            json.dump(object_labels, f)
+
+    val_test_keys = sorted(list(gqa_vg_val.keys()))
+    val_keys = val_test_keys[:5348]
+    test_keys = val_test_keys[5348:]
+
+    gqa_vg_val = {key: gqa_vg_val[key] for key in val_keys}
+    gqa_vg_test = {key: gqa_vg_val[key] for key in test_keys}
+
+    train_gqa_vg = process_and_dump(gqa_vg_train, args, 'train')
+    val_gqa_vg = process_and_dump(gqa_vg_val, args, 'val')
+    test_gqa_vg = process_and_dump(gqa_vg_test, args, 'test')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gqa_vg',
-        default='data/VG/gqa_sceneGraphs.json',
+    parser.add_argument('--gqa_vg_train',
+        default='data/VG/train_sceneGraphs.json',
         type=str,
-        help='Path to GQAs visual genome dataset json file')
-    parser.add_argument('--splits',
-        default='data/VG/',
+        help='Path to GQAs visual genome TRAIN dataset json file')
+    parser.add_argument('--gqa_vg_val',
+        default='data/VG/val_sceneGraphs.json',
         type=str,
-        help='Path to directory containing train-val-test split in json files')
+        help='Path to GQAs visual genome VAL dataset json file')
+    # parser.add_argument('--splits',
+    #     default='data/VG/',
+    #     type=str,
+    #     help='Path to directory containing train-val-test split in json files')
     parser.add_argument('--destination',
         default='data/VG',
         type=str,
