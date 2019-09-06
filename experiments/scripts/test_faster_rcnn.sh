@@ -1,7 +1,7 @@
 #!/bin/bash
 
 set -x
-set -e
+# set -e
 
 export PYTHONUNBUFFERED="True"
 
@@ -37,8 +37,8 @@ case ${DATASET} in
     RATIOS="[0.5,1,2]"
     ;;
   gqa_vg)
-    TRAIN_IMDB="gqa_vg_minitrain"
-    TEST_IMDB="gqa_vg_minitest"
+    TRAIN_IMDB="gqa_vg_train"
+    TEST_IMDB="gqa_vg_test"
     STEPSIZE="[350000]"
     ITERS=490000
     ANCHORS="[4,8,16,32]"

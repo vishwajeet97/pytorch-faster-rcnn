@@ -18,6 +18,7 @@ import scipy.io as sio
 import pickle
 import subprocess
 import uuid
+import json
 from .vg_eval import vg_eval # do this at last
 from model.config import cfg
 
@@ -30,7 +31,7 @@ class gqa_vg(imdb):
         imdb.__init__(self, name)
         self._image_set = image_set 
         self._data_path = self._get_default_path()
-        self._classes = _get_object_classes()
+        self._classes = self._get_object_classes()
         self._class_to_ind = dict(
             list(zip(self.classes, list(range(self.num_classes)))))
         self._image_ext = '.jpg'
@@ -76,11 +77,11 @@ class gqa_vg(imdb):
         # Example path to image set file:
         # self._data_path + //VOC2007/ImageSets/Main/val.txt
         image_set_file = os.path.join(self._data_path, 
-                                      self._image_set + '.txt')
+                                      self._image_set + '_clean.json')
         assert os.path.exists(image_set_file), \
           'Path does not exist: {}'.format(image_set_file)
         with open(image_set_file) as f:
-            image_index = [x.strip() for x in f.readlines()]
+            image_index = json.load(f)
         return image_index
 
     def _get_default_path(self):
@@ -89,13 +90,26 @@ class gqa_vg(imdb):
     """
         return os.path.join(cfg.DATA_DIR, 'VG')
 
+    def _get_object_classes(self):
+        """
+        Reads the object classes from a json file
+        """
+        with open(os.path.join(self._data_path, 'objects.json')) as f:
+            classes = json.load(f)
+
+        classes.insert(0, '__background__')
+        return classes
+
     def gt_roidb(self):
         """
     Return the database of ground-truth regions of interest.
 
     This function loads/saves from/to a cache file to speed up future calls.
     """
-        cache_file = os.path.join(self._data_path, self._image_set + '_gt_roidb.pkl')
+        cachedir = os.path.join(self._data_path, 'cache')
+        if not os.path.isdir(cachedir):
+            os.mkdir(cachedir)
+        cache_file = os.path.join(cachedir, self._image_set + '_gt_roidb.pkl')
         if os.path.exists(cache_file):
             with open(cache_file, 'rb') as fid:
                 try:
@@ -105,7 +119,7 @@ class gqa_vg(imdb):
             print('{} gt roidb loaded from {}'.format(self.name, cache_file))
             return roidb
 
-        gt_roidb = self._load_vg_annotation
+        gt_roidb = self._load_vg_annotation()
         with open(cache_file, 'wb') as fid:
             pickle.dump(gt_roidb, fid, pickle.HIGHEST_PROTOCOL)
         print('wrote gt roidb to {}'.format(cache_file))
@@ -113,7 +127,7 @@ class gqa_vg(imdb):
         return gt_roidb
 
     def rpn_roidb(self):
-        if self._image_set != 'minitest':
+        if self._image_set != 'minitest' and self._image_set != 'test':
             gt_roidb = self.gt_roidb()
             rpn_roidb = self._load_rpn_roidb(gt_roidb)
             roidb = imdb.merge_roidbs(gt_roidb, rpn_roidb)
@@ -136,7 +150,7 @@ class gqa_vg(imdb):
     Load image and bounding boxes info from XML file in the PASCAL VOC
     format.
     """
-        filename = os.path.join(self._data_path, self._image_set + '.json')
+        filename = os.path.join(self._data_path, self._image_set + '_annotations.json')
         # tree = ET.parse(filename)
         # objs = tree.findall('object')
         # if not self.config['use_diff']:
@@ -162,14 +176,17 @@ class gqa_vg(imdb):
             # "Seg" area for pascal is just the box area
             seg_areas = np.zeros((num_objs), dtype=np.float32)
 
+            height_image = image_objs[image_idx]["height"]
+            width_image = image_objs[image_idx]["width"]
             # Load object bounding boxes into a data frame.
             for ix, obj in enumerate(objs):
                 x, y, w, h = obj['x'], obj['y'], obj['w'], obj['h']
+
                 # Make pixel indexes 0-based
                 x1 = x
                 y1 = y
-                x2 = x+w
-                y2 = y+h
+                x2 = int(np.clip(x+w, 0, width_image-2))
+                y2 = int(np.clip(y+h, 0, height_image-2))
                 cls = self._class_to_ind[obj['name']]
                 boxes[ix, :] = [x1, y1, x2, y2]
                 gt_classes[ix] = cls
@@ -194,7 +211,7 @@ class gqa_vg(imdb):
         path = os.path.join(self._data_path, 'results', filename)
         return path
 
-    def _write_voc_results_file(self, all_boxes):
+    def _write_vg_results_file(self, all_boxes):
         for cls_ind, cls in enumerate(self.classes):
             if cls == '__background__':
                 continue
@@ -214,15 +231,17 @@ class gqa_vg(imdb):
                                 dets[k, 3] + 1))
 
     def _do_python_eval(self, output_dir='output'):
-        annopath = os.path.join(self._data_path, self._image_set + '.json')
-        imagesetfile = os.path.join(self._data_path, self._image_set + '.txt')
-        cachedir = os.path.join(self._data_path, 'annotations_cache')
+        annopath = os.path.join(self._data_path, self._image_set + '_annotations.json')
+        imagesetfile = os.path.join(self._data_path, self._image_set + '_clean.json')
+        cachedir = os.path.join(self._data_path, 'cache')
         aps = []
         # The PASCAL VOC metric changed in 2010
         use_07_metric = False
         print('VOC07 metric? ' + ('Yes' if use_07_metric else 'No'))
         if not os.path.isdir(output_dir):
             os.mkdir(output_dir)
+        if not os.path.isdir(cachedir):
+            os.mkdir(cachedir)    
         for i, cls in enumerate(self._classes):
             if cls == '__background__':
                 continue

@@ -44,6 +44,11 @@ for split in ['minitrain', 'minival', 'minitest']:
     name = 'gqa_vg_{}'.format(split)
     __sets[name] = (lambda split=split: gqa_vg(split))
 
+# Set gqa_vg
+for split in ['train', 'val', 'test']:
+    name = 'gqa_vg_{}'.format(split)
+    __sets[name] = (lambda split=split: gqa_vg(split))
+
 
 def get_imdb(name):
     """Get an imdb (image database) by name."""

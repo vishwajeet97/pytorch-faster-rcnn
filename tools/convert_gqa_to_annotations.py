@@ -27,15 +27,15 @@ def process_and_dump(gqa_vg, args, split='train'):
         with open(os.path.join(args.destination, 'objects.json'), 'w+') as f:
             json.dump(object_labels, f)
 
-    with open(os.path.join(args.destination, '%s_annotations.json'), 'w+') as f:
+    with open(os.path.join(args.destination, '%s_annotations.json'%split), 'w+') as f:
         json.dump(split_gqa_vg, f)
 
     if args.mini_version:
         mini_gqa_vg = {key: value for index, (key, value) in enumerate(split_gqa_vg.items()) if index < 1000}
-        with open(os.path.join(args.destination, 'mini%s_annotations.json'), 'w+') as f:
+        with open(os.path.join(args.destination, 'mini%s_annotations.json'%split), 'w+') as f:
             json.dump(mini_gqa_vg, f)
         keys = list(mini_gqa_vg.keys())
-        with open(os.path.join(args.destination, 'mini%s_clean.json'), 'w+') as f:
+        with open(os.path.join(args.destination, 'mini%s_clean.json'%split), 'w+') as f:
             json.dump(keys, f)
 
     return split_gqa_vg
@@ -53,7 +53,7 @@ def main(args):
 
     train_gqa_vg = process_and_dump(gqa_vg, args, 'train')
     val_gqa_vg = process_and_dump(gqa_vg, args, 'val')
-    #test_gqa_vg = process_and_dump(gqa_vg, args, 'test')
+    test_gqa_vg = process_and_dump(gqa_vg, args, 'test')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

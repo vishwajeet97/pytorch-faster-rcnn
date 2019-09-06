@@ -1,10 +1,10 @@
 #!/bin/bash
 
 set -x
-set -e
+# set -e
 
 export PYTHONUNBUFFERED="True"
-
+# rm data/VG/cache/minitrain_gt_roidb.pkl
 GPU_ID=$1
 DATASET=$2
 NET=$3
@@ -40,8 +40,8 @@ case ${DATASET} in
     RATIOS="[0.5,1,2]"
     ;;
   gqa_vg)
-    TRAIN_IMDB="gqa_vg_minitrain"
-    TEST_IMDB="gqa_vg_minival"
+    TRAIN_IMDB="gqa_vg_train"
+    TEST_IMDB="gqa_vg_val"
     STEPSIZE="[350000]"
     ITERS=490000
     ANCHORS="[4,8,16,32]"
