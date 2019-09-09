@@ -5,6 +5,8 @@
 
 export PYTHONUNBUFFERED="True"
 rm data/VG/cache/train_gt_roidb.pkl
+rm data/VG/cache/val_gt_roidb.pkl
+
 GPU_ID=$1
 DATASET=$2
 NET=$3

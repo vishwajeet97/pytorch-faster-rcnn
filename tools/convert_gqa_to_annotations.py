@@ -1,24 +1,47 @@
 import os
 import json
 import argparse
+from PIL import Image
+import numpy as np
+from tqdm import tqdm
 
 def process_and_dump(gqa_vg, args, split='train'):
     # with open(os.path.join(args.splits, '%s_clean.json'%split)) as f:
     #     idx = json.load(f)
 
-    idx = sorted(list(gqa_vg.keys()))
     # split_gqa_vg = {img_id:gqa_vg[str(img_id)] for img_id in idx if str(img_id) in gqa_vg}
     # print ('Out of ', len(idx), 'images, found ', len(split_gqa_vg))
-
-    for img_id, record in gqa_vg.items():
+    invalid_img_id = []
+    for img_id, record in tqdm(gqa_vg.items()):
         record.pop('location', None)
         record.pop('weather', None)
         objects = []
+
+        height, width = Image.open(args.image_path + img_id + '.jpg').size[:2]
+        # invalid_obj
         for obj_id, obj in record['objects'].items():
             obj.pop('attributes', None)
             obj.pop('relations', None)
+
+            x, y, w, h = obj['x'], obj['y'], obj['w'], obj['h']
+            if x >= width or y >= height:
+                continue
+            x1 = x
+            y1 = y
+            x2 = int(np.clip(x+w, 0, width-1))
+            y2 = int(np.clip(y+h, 0, height-1))
+            if x2 == x1 or y2 == y1:
+                continue
+
             objects.append(obj)
+        if len(objects) == 0:
+            invalid_img_id.append(img_id)
         record['objects'] = objects
+
+    for img_id in invalid_img_id:
+        gqa_vg.pop(img_id, None)
+
+    idx = sorted(list(gqa_vg.keys()))
 
     with open(os.path.join(args.destination, '%s_annotations.json'%split), 'w+') as f:
         json.dump(gqa_vg, f)
@@ -56,9 +79,12 @@ def main(args):
 
     object_labels = sorted(list(object_labels))
     with open(os.path.join(args.destination, 'objects.json'), 'w+') as f:
-            json.dump(object_labels, f)
+        json.dump(object_labels, f)
 
     val_test_keys = sorted(list(gqa_vg_val.keys()))
+
+    val_keys = val_test_keys[:5348]
+    test_keys = val_test_keys[5348:]
 
     gqa_vg_test = {y: gqa_vg_val[y] for y in test_keys}
     gqa_vg_val = {x: gqa_vg_val[x] for x in val_keys}
@@ -77,6 +103,10 @@ if __name__ == "__main__":
         default='../data/gqa/val_sceneGraphs.json',
         type=str,
         help='Path to GQAs visual genome VAL dataset json file')
+    parser.add_argument('--image_path',
+        default='data/VG/VG_100K/',
+        type=str,
+        help='Path where the images are stored')    
     parser.add_argument('--destination',
         default='data/VG',
         type=str,
